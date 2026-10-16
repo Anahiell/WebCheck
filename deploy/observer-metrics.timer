@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Observer snapshot
+[Timer]
+OnBootSec=10
+OnUnitInactiveSec=15
+[Install]
+WantedBy=timers.target
