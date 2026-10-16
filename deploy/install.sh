@@ -32,7 +32,9 @@ ln -sfn /etc/nginx/sites-available/observer /etc/nginx/sites-enabled/observer
 nginx -t
 systemctl daemon-reload
 systemctl start observer-metrics.service
-systemctl disable --now observer.service
+if systemctl cat observer.service >/dev/null 2>&1; then
+    systemctl disable --now observer.service
+fi
 systemctl enable --now nginx
 systemctl reload nginx
 curl --fail --silent http://127.0.0.1:8080/ >/dev/null
