@@ -21,24 +21,50 @@ const archEdges=[
 ["can","head","planned"],["can","cool","planned"],["can","eyes","planned"],["can","arms","planned"],
 ["head","servo","prototype"],["cool","fans","prototype"],["pi","vision","planned"],["eyes","ultra","planned"]
 ];
-const svg=(tag,attrs={})=>{const e=document.createElementNS(ARCH_NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e;};
+const STORAGE_KEY="robot-observatory-layout-v1";
+const svg=(tag,attrs={})=>{const e=document.createElementNS(ARCH_NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));return e;};
+const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
 function drawTopology(){
  const root=document.getElementById("topology-svg");if(!root)return;
- const lookup=new Map(archNodes.map(n=>[n[0],n]));
- const headings=[["HOST / SOFTWARE",60,28],["DISTRIBUTED CONTROL",60,409],["HARDWARE",60,570]];
- for(const [name,x,y] of headings){const t=svg("text",{x,y,class:"arch-heading"});t.textContent=name;root.append(t);}
- for(const [a,b,status] of archEdges){
- const A=lookup.get(a),B=lookup.get(b),ax=A[1]+112,ay=A[2]+42,bx=B[1]+112,by=B[2]+42;
- let path;
- if(Math.abs(ax-bx)<15)path=`M ${ax} ${ay+37} C ${ax} ${ay+65}, ${bx} ${by-65}, ${bx} ${by-37}`;
- else if(Math.abs(ay-by)<100)path=`M ${ax+112} ${ay} C ${ax+180} ${ay}, ${bx-180} ${by}, ${bx-112} ${by}`;
- else path=`M ${ax} ${ay+37} C ${ax} ${(ay+by)/2}, ${bx} ${(ay+by)/2}, ${bx} ${by-37}`;
- root.append(svg("path",{d:path,class:"arch-link "+(status==="planned"?"planned":"")}));
- for(let i=0;i<2;i++){const dot=svg("circle",{r:"3",class:"arch-particle "+(status==="planned"?"planned":"")});dot.append(svg("animateMotion",{path,dur:(4.5+i)+"s",begin:(i*2.3)+"s",repeatCount:"indefinite"}));root.append(dot);}
+ const defaults=new Map(archNodes.map(n=>[n[0],{x:n[1],y:n[2]}]));
+ let saved={};try{saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")||{};}catch{}
+ const positions=new Map([...defaults].map(([id,p])=>[id,{x:clamp(Number(saved[id]?.x) || p.x,0,1036),y:clamp(Number(saved[id]?.y) || p.y,0,626)}]));
+ let zoom=1, selected=null, dragging=null;
+ const edgeLayer=svg("g"),nodeLayer=svg("g");root.append(edgeLayer,nodeLayer);
+ const edges=archEdges.map(([a,b,state],index)=>{
+  const path=svg("path",{class:"arch-link "+(state==="planned"?"planned":"")});edgeLayer.append(path);
+  const particles=[];
+  for(let i=0;i<2;i++){const dot=svg("circle",{r:3,class:"arch-particle "+(state==="planned"?"planned":"")});const anim=svg("animateMotion",{dur:(4.5+i)+"s",begin:(i*2.3)+"s",repeatCount:"indefinite"});dot.append(anim);edgeLayer.append(dot);particles.push(anim);}
+  return {a,b,path,particles};
+ });
+ const groups=new Map();
+ for(const [id,x,y,title,detail,state] of archNodes){
+  const g=svg("g",{class:"arch-node "+state,tabindex:"0",role:"button","aria-label":title+", "+state,"data-id":id});
+  g.append(svg("rect",{width:224,height:84,rx:12,class:"arch-box"}));
+  g.append(svg("circle",{cx:18,cy:18,r:4,class:"arch-indicator"}));
+  for(const [content,dy,cls] of [[state==="running"?"RUNNING":state==="prototype"?"PROTOTYPE":"PLANNED",22,"arch-state"],[title,48,"arch-title"],[detail,68,"arch-detail"]]){const t=svg("text",{x:dy===22?30:16,y:dy,class:cls});t.textContent=content;g.append(t);}
+  g.addEventListener("click",()=>select(id));
+  g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();select(id);}if(e.key.startsWith("Arrow")){e.preventDefault();const p=positions.get(id);p.x=clamp(p.x+(e.key==="ArrowRight"?10:e.key==="ArrowLeft"?-10:0),0,1036);p.y=clamp(p.y+(e.key==="ArrowDown"?10:e.key==="ArrowUp"?-10:0),0,626);refresh();persist();}});
+  g.addEventListener("pointerdown",e=>{if(e.button!==0)return;select(id);const p=positions.get(id);dragging={id,pointer:e.pointerId,x:e.clientX,y:e.clientY,startX:p.x,startY:p.y};g.setPointerCapture(e.pointerId);});
+  g.addEventListener("pointermove",e=>{if(!dragging||dragging.pointer!==e.pointerId||dragging.id!==id)return;const rect=root.getBoundingClientRect();const p=positions.get(id);p.x=clamp(dragging.startX+(e.clientX-dragging.x)*1260/rect.width,0,1036);p.y=clamp(dragging.startY+(e.clientY-dragging.y)*710/rect.height,0,626);refresh();});
+  const finish=e=>{if(dragging?.pointer===e.pointerId){dragging=null;persist();}};
+  g.addEventListener("pointerup",finish);g.addEventListener("pointercancel",finish);
+  nodeLayer.append(g);groups.set(id,g);
  }
- for(const [id,x,y,title,detail,status] of archNodes){
- const g=svg("g",{class:"arch-node "+status});g.append(svg("rect",{x,y,width:"224",height:"84",rx:"12",class:"arch-box"}));g.append(svg("circle",{cx:x+18,cy:y+18,r:"4",class:"arch-indicator"}));
- for(const [content,dy,cls] of [[status==="running"?"RUNNING":status==="prototype"?"PROTOTYPE":"PLANNED",22,"arch-state"],[title,48,"arch-title"],[detail,68,"arch-detail"]]){const t=svg("text",{x:x+(dy===22?30:16),y:y+dy,class:cls});t.textContent=content;g.append(t);}root.append(g);
+ function select(id){selected=id;for(const [key,g] of groups)g.classList.toggle("selected",key===id);const n=archNodes.find(n=>n[0]===id);document.getElementById("topology-detail").textContent=n?`${n[3]} — ${n[4]} · ${n[5].toUpperCase()}`:"Select a node for details.";}
+ function refresh(){
+  for(const [id,g] of groups){const p=positions.get(id);g.setAttribute("transform",`translate(${p.x} ${p.y})`);}
+  for(const e of edges){const a=positions.get(e.a),b=positions.get(e.b);const ac={x:a.x+112,y:a.y+42},bc={x:b.x+112,y:b.y+42};const dx=bc.x-ac.x,dy=bc.y-ac.y;let d;
+   if(Math.abs(dx)>Math.abs(dy)){const sx=ac.x+(dx>0?112:-112),ex=bc.x+(dx>0?-112:112);d=`M ${sx} ${ac.y} C ${(sx+ex)/2} ${ac.y}, ${(sx+ex)/2} ${bc.y}, ${ex} ${bc.y}`;}
+   else{const sy=ac.y+(dy>0?42:-42),ey=bc.y+(dy>0?-42:42);d=`M ${ac.x} ${sy} C ${ac.x} ${(sy+ey)/2}, ${bc.x} ${(sy+ey)/2}, ${bc.x} ${ey}`;}
+   e.path.setAttribute("d",d);for(const anim of e.particles)anim.setAttribute("path",d);
+  }
  }
+ function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(Object.fromEntries(positions)));}catch{}}
+ document.getElementById("topology-reset").addEventListener("click",()=>{for(const [id,p] of defaults)positions.set(id,{...p});refresh();persist();});
+ document.getElementById("topology-zoom-in").addEventListener("click",()=>setZoom(zoom+.15));
+ document.getElementById("topology-zoom-out").addEventListener("click",()=>setZoom(zoom-.15));
+ function setZoom(value){zoom=clamp(value,.7,1.7);root.style.width=(zoom*100)+"%";root.style.minWidth=(zoom*900)+"px";document.getElementById("topology-zoom-label").textContent=Math.round(zoom*100)+"%";}
+ refresh();select("pi");
 }
 document.addEventListener("DOMContentLoaded",drawTopology);
