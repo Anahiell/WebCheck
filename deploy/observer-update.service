@@ -1,0 +1,17 @@
+[Unit]
+Description=Publish static Observer files from main, without executing repository code
+After=network-online.target nginx.service
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/observer/update.py
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/srv/observer /var/lib/observer-update
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+TimeoutStartSec=180

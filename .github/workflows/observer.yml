@@ -1,0 +1,18 @@
+name: Observer deployment checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  deployment:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m unittest discover -s tests -v
+      - run: node --check app.js && node --check topology.js
+      - run: sudo apt-get update && sudo apt-get install -y nginx
+      - run: sudo sh deploy/install.sh
+      - run: sh deploy/verify.sh
+      - name: Verify kernel sandbox disallows CAN
+        run: |
+          sudo systemctl show observer-metrics.service -p RestrictAddressFamilies -p User -p PrivateDevices
+          sudo systemctl is-enabled nginx observer-metrics.timer

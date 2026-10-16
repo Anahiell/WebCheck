@@ -1,43 +1,13 @@
 # Robot Observatory
 
-A lightweight, responsive engineering dashboard for **RobotProj** running on Raspberry Pi 5.
+Read-only dashboard for Raspberry Pi host metrics and public Anahiell/RobotProj repository status.
 
-> **Status: UI prototype.** The dashboard currently uses explicitly labeled simulated telemetry. It does **not** connect to SocketCAN, control actuators, or claim to display real robot data.
+Nginx serves an explicit static allowlist and an atomic JSON snapshot. There is no CAN/GPIO/actuator interface, command endpoint, robot executable, or fabricated telemetry. Missing or stale host snapshots hide the readings. Hardware connection state is unknown.
 
-## Features
+The topology supports dragging, keyboard movement, zoom, saved layout, and pausable illustrative flow particles. Host and repository refresh can be paused separately.
 
-- Dark industrial control-room UI, responsive on mobile and desktop
-- Overview of host CPU, memory, temperature and simulated bus traffic
-- Per-node cards (Head, Cooling, Eyes, Arms, Base) with connection state
-- CAN activity table with ID, direction, DLC and payload
-- Event log, simulated warning/healthy status, pause/resume demo
-- No external JS dependencies, CDN calls, or build tools
+See [deployment and rollback guide](deploy/DEPLOYMENT.md) for Debian ARM64 installation, systemd startup, constrained static updates, SSH prerequisites, named Cloudflare tunnel setup and validation.
 
-## Run locally
+Local static preview: `python3 -m http.server 8080 --bind 127.0.0.1` (development only; metrics unavailable). Production uses the Nginx configuration in deploy/.
 
-Open `index.html` in a browser, or serve the folder:
-
-```sh
-python3 -m http.server 8080
-```
-
-Then open `http://localhost:8080` on your Raspberry Pi or LAN.
-
-## Roadmap
-
-1. Define a **read-only** JSON telemetry contract with RobotProj.
-2. Implement a small Pi-hosted HTTP/WebSocket bridge to real system status.
-3. Add authenticated remote access and explicit connection indicators.
-4. Only later consider command controls, with safety interlocks and independent emergency-stop logic.
-
-## Architecture
-
-```
-ESP32 nodes <-- CAN --> Raspberry Pi / RobotProj
-                                |
-                         read-only bridge
-                                |
-                      Robot Observatory UI
-```
-
-The UI must never communicate directly with actuators. Real telemetry is a future integration task. See [GitHub Issues](https://github.com/Anahiell/WebCheck/issues).
+Tests: `python3 -m unittest discover -s tests -v`. Linux integration checks are in `.github/workflows/observer.yml`.
