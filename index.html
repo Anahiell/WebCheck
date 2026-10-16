@@ -8,6 +8,7 @@
   <title>Robot Observatory · Mission Control</title>
   <link rel="stylesheet" href="./styles.css">
   <script src="./app.js" defer></script>
+  <script src="./topology.js" defer></script>
 </head>
 <body>
   <div class="shell">
@@ -33,7 +34,12 @@
           <article class="metric panel"><div class="metric-top">CPU TEMP <span>♨</span></div><div class="metric-value"><span id="temp">--</span><small>°C</small></div><div class="track"><div id="temp-bar" class="fill amber-fill"></div></div><div class="metric-foot">Thermal sensor <span>SIMULATED</span></div></article>
           <article class="metric panel"><div class="metric-top">CAN FRAMES <span>⇄</span></div><div class="metric-value"><span id="frames">0</span><small>total</small></div><div class="sparkline" id="sparkline" aria-hidden="true"></div><div class="metric-foot">Virtual bus activity <span>SIMULATED</span></div></article>
         </section>
-        <section id="nodes" class="section"><div class="section-head"><div><div class="section-kicker">01 / NETWORK</div><h2>Node topology <span class="muted">/ 05</span></h2></div><span class="section-meta"><span class="dot teal"></span> DEMO TOPOLOGY</span></div><div id="node-grid" class="node-grid"></div></section>
+        <section id="architecture" class="section panel topology-panel">
+<div class="panel-header"><div><div class="section-kicker">01 / SYSTEM ARCHITECTURE</div><h2>Robot node network</h2></div><span class="small-tag">SIMULATED DATA FLOW</span></div>
+<p class="topology-note">Architecture derived from RobotProj. Separate host, software, buses, controllers and hardware. Animated particles illustrate planned connections, NOT actual packets.</p>
+<div class="topology-scroll" tabindex="0" role="region" aria-label="Scrollable robot architecture"><svg id="topology-svg" viewBox="0 0 1260 710" role="img" aria-label="Robot architecture with Raspberry Pi, RobotCore, ROS2, CAN bus, ESP32 boards, actuators and sensors"></svg></div>
+<div class="topology-legend"><span>● Running host</span><span>◉ Bench-tested hardware</span><span>○ Planned / not integrated</span><span>Moving dots = illustrative traffic</span></div></section>
+<section id="nodes" class="section"><div class="section-head"><div><div class="section-kicker">01 / NETWORK</div><h2>Node topology <span class="muted">/ 05</span></h2></div><span class="section-meta"><span class="dot teal"></span> DEMO TOPOLOGY</span></div><div id="node-grid" class="node-grid"></div></section>
         <div class="lower-grid">
           <section id="traffic" class="section panel traffic"><div class="panel-header"><div><div class="section-kicker">02 / TRANSPORT</div><h2>CAN bus activity</h2></div><span class="small-tag">vcan0 · simulated</span></div><div class="table-wrap"><table><thead><tr><th>TIME</th><th>CAN ID</th><th>DIR</th><th>DLC</th><th>PAYLOAD (HEX)</th></tr></thead><tbody id="traffic-body"></tbody></table></div><div class="panel-footer">Classical CAN · 11-bit IDs · Demo stream</div></section>
           <section id="events" class="section panel events"><div class="panel-header"><div><div class="section-kicker">03 / DIAGNOSTICS</div><h2>Event log</h2></div><span class="small-tag">LOCAL</span></div><div id="event-list" class="event-list" aria-live="polite"></div><div class="panel-footer">Session events only · Not persisted</div></section>
